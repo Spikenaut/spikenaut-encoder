@@ -2,6 +2,13 @@
 //!
 //! SNN sensory encoding pipelines for cyber-physical systems.
 //!
+//! ## Provenance
+//!
+//! Extracted from Eagle-Lander, the author's own private neuromorphic GPU supervisor
+//! repository (closed-source). The sensory encoder converted GPU/mining telemetry into
+//! spike trains feeding a 16-neuron LIF SNN in production before being open-sourced
+//! as a standalone crate.
+//!
 //! ## Modules
 //! - [`poisson`] — Stochastic Poisson spike-train generation
 //! - [`sensory_encoder`] — 16-channel rate/temporal/predictive encoder for system telemetry
