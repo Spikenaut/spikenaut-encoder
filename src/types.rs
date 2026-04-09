@@ -16,6 +16,7 @@ pub struct EncodingMetadata {
 }
 
 /// The standardized output of an encoder.
+#[derive(Default)]
 pub struct EncodedOutput {
     pub spikes: Vec<SpikeEvent>,
     pub embeddings: Option<Vec<f32>>,
@@ -24,26 +25,15 @@ pub struct EncodedOutput {
 
 impl EncodedOutput {
     pub fn new() -> Self {
-        Self {
-            spikes: Vec::new(),
-            embeddings: None,
-            metadata: None,
-        }
+        Self::default()
     }
 }
 
 /// General-purpose configuration for encoders.
+#[derive(Default)]
 pub struct EncoderConfig {
     // Add common configuration options here.
     // For example:
     // pub input_channels: usize,
     // pub output_channels: usize,
-}
-
-impl Default for EncoderConfig {
-    fn default() -> Self {
-        Self {
-            // Default values
-        }
-    }
 }
