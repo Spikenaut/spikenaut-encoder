@@ -21,8 +21,7 @@ impl PopulationEncoder {
         
         let distance = (input - preferred_value).abs();
         // Gaussian-like response curve
-        let rate = (- (distance * distance) / (2.0 * self.tuning_width * self.tuning_width)).exp();
-        rate
+        (- (distance * distance) / (2.0 * self.tuning_width * self.tuning_width)).exp()
     }
 }
 
@@ -32,7 +31,7 @@ impl Encoder for PopulationEncoder {
         let mut rng = rand::thread_rng();
 
         // This encoder expects a single value in the input slice
-        if let Some(&value) = input.get(0) {
+        if let Some(&value) = input.first() {
             for i in 0..self.num_neurons {
                 let rate = self.get_rate(value, i);
                 if rng.gen_range(0.0..1.0) < rate {
