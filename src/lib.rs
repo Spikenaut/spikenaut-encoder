@@ -6,6 +6,7 @@ pub mod encoders;
 pub mod modulators;
 pub mod poisson;
 pub mod types;
+pub mod spike_encoder;
 
 pub mod prelude {
     pub use crate::encoders::*;
@@ -13,6 +14,7 @@ pub mod prelude {
     pub use crate::poisson::*;
     pub use crate::types::*;
     pub use crate::Encoder;
+    pub use crate::spike_encoder::*;
 }
 
 use types::EncodedOutput;
