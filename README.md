@@ -1,70 +1,96 @@
-# spikenaut-encoder
+# Axon Encoder
 
-**Warp-Optimized 1024-Channel sensory encoding for spiking neural networks, accelerated via myelin-accelerator.**
+**A flexible and easy-to-use sensory encoding library for Spiking Neural Networks (SNNs).**
 
-`spikenaut-encoder` converts continuous experimental telemetry and time-series data into biologically plausible spike trains. It serves as the front-end sensory layer for the Spikenaut ecosystem — built to scale to 1024+ input channels in a single CUDA warp dispatch on the RTX 5080 Blackwell architecture.
+`axon-encoder` provides a collection of algorithms to convert real-world, continuous data (like sensor readings or stock prices) into spikes—the event-based signals that SNNs understand. This process, known as sensory encoding, is the first step in building powerful and efficient neuromorphic systems.
+
+## What is Sensory Encoding?
+
+Traditional neural networks process dense, continuous values. Spiking Neural Networks, on the other hand, are event-driven: they process sparse, discrete "spikes" that occur at specific points in time.
+
+**Sensory encoding is the bridge between the analog world and the spiking world.** This library gives you the tools to translate your data into meaningful spike trains using various strategies.
 
 ## Features
 
-- **GPU Acceleration**: Utilizes `myelin-accelerator` and CUDA kernels for massively parallel Poisson spike generation (RTX 5080 Blackwell optimized).
-- **1024-Channel Baseline**: `EncoderConfig::default()` sets `input_channels = 1024` — fully saturating a CUDA warp grid in a single kernel dispatch.
-- **Core Encoders**: Rate, Temporal, Predictive (anomaly), Population, and Neuromodulator-driven strategies.
-- **Pure Biological Modulators**: Neuromodulation logic (Dopamine, Cortisol, Acetylcholine, Tempo) stripped of domain-specific noise for universal application.
-- **Lightweight Tensors**: Built on the `corinth-canal` backbone for optimized memory throughput and minimal overhead.
-- **Standardized Output**: `EncodedOutput` providing discrete `SpikeEvent` sequences and optional high-dimensional embeddings for hybrid SNN-LLM fusion.
+- **A Suite of Encoders**: Choose the right encoding strategy for your data.
+    - **`RateEncoder`**: Encodes a value based on the *rate* of firing. Higher input values result in a higher spike frequency.
+    - **`DerivativeEncoder`**: Fires spikes based on the *rate of change* of the input. It's great for detecting sudden jumps or drops in a signal.
+    - **`TemporalEncoder`**: Detects *temporal patterns* in your data, firing when specific sequences or changes over time are observed.
+    - **`PopulationEncoder`**: Encodes a value across a *population* of neurons, where each neuron is tuned to a specific input range.
+    - **`DeltaEncoder`**: A simple and efficient encoder that fires a spike when the input value changes by a certain amount.
+- **Extensible**: The `Encoder` trait makes it easy to create your own custom encoders.
+- **Lightweight**: Built with minimal dependencies to be fast and easy to integrate into any project.
 
 ## Installation
 
+To use `axon-encoder` in your project, add the following to your `Cargo.toml`:
+
 ```toml
 [dependencies]
-spikenaut-encoder = { path = "../spikenaut-encoder" }
-myelin-accelerator = { path = "../myelin-accelerator" }
-corinth-canal = { path = "../corinth-canal" }
+axon-encoder = { git = "https://github.com/your-username/axon-encoder.git" }
+```
+*(Note: Once published to crates.io, this will be `axon-encoder = "0.2.0"`)*
+
+For local development, you can use a path dependency:
+```toml
+[dependencies]
+axon-encoder = { path = "../axon-encoder" }
 ```
 
-## Quick Start (requires GPU context)
+## Quick Start
+
+Here's how to get started with a simple `RateEncoder`.
 
 ```rust
-use spikenaut_encoder::prelude::*;
-use myelin_accelerator::GpuAccelerator;
+use axon_encoder::prelude::*;
 
-// 1. Initialize GPU context (owned by parent application — never constructed internally)
-let gpu = GpuAccelerator::new();
+fn main() {
+    // 1. Load the default configuration, which defines the number of channels.
+    //    You can customize this to match your input data.
+    let config = EncoderConfig::default(); // Defaults to 256 channels.
 
-// 2. Load the Blackwell 1024-channel baseline config
-let config = EncoderConfig::default(); // input_channels: 1024, output_channels: 1024
+    // 2. Initialize an encoder. Let's use a RateEncoder.
+    //    It will map input values from a range of (0.0, 1.0) to a firing
+    //    rate between 5 Hz and 100 Hz.
+    let mut encoder = RateEncoder::new(5.0, 100.0, (0.0, 1.0));
 
-// 3. Initialize the encoder
-let mut encoder = RateEncoder::new(5.0, 100.0, (0.0, 1.0));
+    // 3. Create a sample input stimulus.
+    //    Here, we create a simple ramp from 0.0 to 1.0.
+    let input: Vec<f32> = (0..config.input_channels)
+        .map(|i| i as f32 / (config.input_channels - 1) as f32)
+        .collect();
 
-// 4. Build a 1024-element stimulus — saturates a full CUDA warp grid in one dispatch
-let input: Vec<f32> = (0..config.input_channels)
-    .map(|i| i as f32 / (config.input_channels - 1) as f32)
-    .collect();
+    // 4. Encode the input into spikes!
+    let output = encoder.encode(&input);
 
-// 5. Encode (GPU-accelerated parallel Poisson generation on RTX 5080)
-let output = encoder.encode(&input, &gpu);
-println!("{}/{} channels fired", output.spikes.len(), config.input_channels);
+    // The `output.spikes` vector now contains the generated SpikeEvents.
+    println!(
+        "Input stimulus of {} values generated {} spikes.",
+        input.len(),
+        output.spikes.len()
+    );
+}
 ```
 
-## Neuromodulatory Sensory Logic
+## Examples
 
-The `NeuromodSensoryEncoder` implements homeostatic adaptation and dynamic gain control influenced by biological modulator states:
-- **Dopamine**: Increases gain/sensitivity.
-- **Cortisol**: Modulates baseline channel biases.
-- **Acetylcholine**: Enhances adaptation rates for heightened focus.
-- **Tempo**: Direct scaling of firing probabilities.
+For more detailed examples of each encoder, check out the files in the `/examples` directory. You can run any example with:
+
+```bash
+cargo run --example <example_name>
+```
+
+For instance, to run the delta encoding example:
+```bash
+cargo run --example delta_encoding
+```
 
 ## Design Philosophy
 
-- **VRAM Context Safety**: The `Encoder` trait requires a borrowed `&GpuAccelerator`. This prevents multiple encoders from spawning duplicate CUDA contexts and crashing VRAM.
-- **Standalone Abstraction**: Stripped of HFT, mining, or market-specific domain logic to ensure it remains a pure mathematical and biological encoding library.
-- **Performance First**: Minimal allocation in the hot path, leveraging raw device buffers for spike generation wherever possible.
-
-## Integration
-
-`spikenaut-encoder` is designed to feed event-based data into other Spikenaut libraries like `spikenaut-synapse`. For hybrid workflows, its embedding outputs are compatible with `spike-lmo` fusion projectors.
+- **Simplicity and Focus**: The library is designed to do one thing well: sensory encoding. It is unopinionated about your SNN architecture or simulation environment.
+- **Performance**: The core encoding loops are designed to be efficient with minimal memory allocation.
+- **Accessibility**: We aim to make SNNs more accessible to newcomers by providing clear documentation and easy-to-use tools.
 
 ## Contributing
 
-Contributions are welcome! Please feel free to open an issue or submit a pull request.
+Contributions are welcome! Whether it's a new encoder, a bug fix, or improved documentation, please feel free to open an issue or submit a pull request.
